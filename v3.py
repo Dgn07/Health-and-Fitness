@@ -2,6 +2,7 @@ import streamlit as st
 import pandas as pd
 import datetime
 import os
+import tempfile
 from io import BytesIO
 from fpdf import FPDF
 import matplotlib.pyplot as plt
@@ -114,9 +115,14 @@ def create_pdf(dataframe):
     plt.savefig(weight_buf, format='png')
     plt.close()
 
-    # Save images temporarily
-    save_chart_to_file(cal_buf, "cal_chart.png")
-    save_chart_to_file(weight_buf, "weight_chart.png")
+    # Save images to temporary files
+    cal_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    cal_tmp.close()
+    save_chart_to_file(cal_buf, cal_tmp.name)
+
+    weight_tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".png")
+    weight_tmp.close()
+    save_chart_to_file(weight_buf, weight_tmp.name)
 
     pdf = FPDF()
     pdf.add_page()
@@ -139,14 +145,18 @@ def create_pdf(dataframe):
         pdf.cell(0, 8, f"Deficit: {deficit_val} kcal", ln=True)
         pdf.ln(5)
 
-    pdf.image("cal_chart.png", x=10, w=180)
+    pdf.image(cal_tmp.name, x=10, w=180)
     pdf.ln(5)
-    pdf.image("weight_chart.png", x=10, w=180)
+    pdf.image(weight_tmp.name, x=10, w=180)
 
     output = BytesIO()
     pdf_bytes = pdf.output(dest='S').encode('latin-1')
     output.write(pdf_bytes)
     output.seek(0)
+
+    # Clean up temporary files
+    os.remove(cal_tmp.name)
+    os.remove(weight_tmp.name)
     return output
 
 # Dashboard
